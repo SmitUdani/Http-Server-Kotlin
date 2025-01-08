@@ -47,10 +47,10 @@ fun main() {
 
 fun response(length: Int, body: String, type: String = "text/plain"): ByteArray {
     return """
-        HTTP/1.1 200 OK\r
-        Content-Type: $type\r
-        Content-Length: $length\r
-        \r
+        HTTP/1.1 200 OK
+        Content-Type: $type
+        Content-Length: $length
+        
         $body
     """.trimIndent().toByteArray()
 }
