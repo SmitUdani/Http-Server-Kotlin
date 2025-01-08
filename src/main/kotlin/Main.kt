@@ -1,3 +1,5 @@
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.net.ServerSocket;
 
 fun main() {
@@ -13,10 +15,21 @@ fun main() {
 
     val client = serverSocket.accept() // Wait for connection from client
     val outputStream = client.getOutputStream()
+    val inputStream = client.getInputStream()
 
-    outputStream.write("HTTP/1.1 200 OK\r\n\r\n".toByteArray())
+    inputStream.bufferedReader().use {
+        val request = it.readLine()
+        val path = request.split(" ")[1]
+
+        if(path == "/")
+            outputStream.write("HTTP/1.1 200 OK\r\n\r\n".toByteArray())
+        else outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".toByteArray())
+    }
+
     outputStream.flush()
     outputStream.close()
+
+
 
     println("accepted new connection")
 }
