@@ -14,7 +14,7 @@ fun main() {
     val client = serverSocket.accept() // Wait for connection from client
     val outputStream = client.getOutputStream()
 
-    outputStream.write("HTTP/1.1 200 OK\\r\\n\\r\\n".toByteArray())
+    outputStream.write("HTTP/1.1 200 OK\r\n\r\n".toByteArray())
     outputStream.flush()
     outputStream.close()
 
