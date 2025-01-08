@@ -1,5 +1,3 @@
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.ServerSocket;
 
 fun main() {
@@ -15,7 +13,7 @@ fun main() {
 
     val client = serverSocket.accept() // Wait for connection from client
     println("accepted new connection")
-    
+
     val outputStream = client.getOutputStream()
     val inputStream = client.getInputStream()
 
@@ -23,24 +21,36 @@ fun main() {
         val request = it.readLine()
         val url = request.split(" ")[1]
 
-        if(url == "/")
-            outputStream.write("HTTP/1.1 200 OK\r\n\r\n".toByteArray())
-        else {
-            val paths = url.split("/")
-            when(paths[1]) {
-                "echo" -> outputStream.write(
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${paths[2].length}\r\n\r\n${paths[2]}\r\n"
-                        .toByteArray()
-                )
-
-                else -> outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".toByteArray())
+        when(url) {
+            "/" -> outputStream.write("HTTP/1.1 200 OK\r\n\r\n".toByteArray())
+            "/user-agent" -> {
+                it.readLine()
+                val userAgent = it.readLine().split(":")[1].trim()
+                outputStream.write(response(userAgent.length, userAgent))
             }
+            else -> {
+                val paths = url.split("/")
+                when(paths[1]) {
+                    "echo" -> outputStream.write(response(paths[2].length, paths[2]))
+                    else -> outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".toByteArray())
+                }
+            }
+
+
         }
     }
 
     outputStream.flush()
     outputStream.close()
 
+}
 
-
+fun response(length: Int, body: String, type: String = "text/plain"): ByteArray {
+    return """
+        HTTP/1.1 200 OK\r
+        Content-Type: $type\r
+        Content-Length: $length\r
+        \r
+        $body
+    """.trimIndent().toByteArray()
 }
