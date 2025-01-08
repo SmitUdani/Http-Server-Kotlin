@@ -51,6 +51,6 @@ fun response(length: Int, body: String, type: String = "text/plain"): ByteArray 
         Content-Type: $type
         Content-Length: $length
         
-        $body
+        $body\r\n
     """.trimIndent().toByteArray()
 }
