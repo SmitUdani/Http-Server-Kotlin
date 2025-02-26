@@ -1,6 +1,11 @@
+import kotlinx.coroutines.Dispatchers
 import java.net.ServerSocket;
+import kotlinx.coroutines.launch;
+import kotlinx.coroutines.runBlocking;
+import java.net.Socket
 
-fun main() {
+fun main() = runBlocking {
+
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     println("Logs from your program will appear here!")
 
@@ -11,9 +16,15 @@ fun main() {
     // ensures that we don't run into 'Address already in use' errors
     serverSocket.reuseAddress = true
 
-    val client = serverSocket.accept() // Wait for connection from client
-    println("accepted new connection")
+    while(true) {
+        val client = serverSocket.accept() // Wait for connection from client
+        launch(Dispatchers.IO) { handleClient(client) }
+        println("accepted new connection")
+    }
 
+}
+
+suspend fun handleClient(client: Socket) {
     val outputStream = client.getOutputStream()
     val inputStream = client.getInputStream()
 
@@ -42,7 +53,6 @@ fun main() {
 
     outputStream.flush()
     outputStream.close()
-
 }
 
 fun response(length: Int, body: String, type: String = "text/plain"): ByteArray {
