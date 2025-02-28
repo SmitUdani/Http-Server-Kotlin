@@ -7,7 +7,7 @@ import java.net.Socket
 const val HTTP_VERSION = "HTTP/1.1"
 const val CRLF = "\r\n"
 const val OCTET_STREAM = "application/octet-stream"
-const val ROOT_DIRECTORY = "/tmp/"
+lateinit var ROOT_DIRECTORY: String
 
 enum class HttpMethod {
     GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
@@ -132,7 +132,7 @@ fun makeResponseObj(request: Request): Response {
     }
 }
 
-fun handleClient(client: Socket) {
+fun handleClient(client: Socket, args: Array<String>) {
     val request = makeRequestObj(client)
 
     val response = makeResponseObj(request)
@@ -143,15 +143,21 @@ fun handleClient(client: Socket) {
     }
 }
 
-fun main() = runBlocking {
+fun main(args: Array<String>) = runBlocking {
 
     val serverSocket = ServerSocket(4221)
     // Since the tester restarts your program quite often, setting SO_REUSEADDR
     // ensures that we don't run into 'Address already in use' errors
     serverSocket.reuseAddress = true
+
+    args.forEachIndexed { index, s ->
+        if(s == "--directory" && index + 1 < args.size)
+            ROOT_DIRECTORY = args[index + 1]
+    }
+
     while (true) {
         val client = serverSocket.accept()
         println("accepted new connection")
-        launch { handleClient(client) }
+        launch { handleClient(client, args) }
     }
 }
