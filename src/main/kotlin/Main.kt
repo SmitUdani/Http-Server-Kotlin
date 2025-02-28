@@ -1,3 +1,4 @@
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -7,7 +8,7 @@ import java.net.Socket
 const val HTTP_VERSION = "HTTP/1.1"
 const val CRLF = "\r\n"
 const val OCTET_STREAM = "application/octet-stream"
-lateinit var ROOT_DIRECTORY: String
+var ROOT_DIRECTORY = ""
 
 enum class HttpMethod {
     GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
@@ -132,14 +133,14 @@ fun makeResponseObj(request: Request): Response {
     }
 }
 
-fun handleClient(client: Socket, args: Array<String>) {
+fun handleClient(client: Socket) {
     val request = makeRequestObj(client)
 
     val response = makeResponseObj(request)
 
-    client.outputStream.writer().use {
-        it.write(response.toHttpResponse())
-        it.flush()
+    client.getOutputStream().writer().apply {
+        this.write(response.toHttpResponse())
+        this.flush()
     }
 }
 
@@ -158,6 +159,6 @@ fun main(args: Array<String>) = runBlocking {
     while (true) {
         val client = serverSocket.accept()
         println("accepted new connection")
-        launch { handleClient(client, args) }
+        launch(Dispatchers.IO) { handleClient(client) }
     }
 }
