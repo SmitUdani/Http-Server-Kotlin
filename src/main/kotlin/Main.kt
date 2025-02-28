@@ -1,66 +1,156 @@
-import kotlinx.coroutines.Dispatchers
-import java.net.ServerSocket;
-import kotlinx.coroutines.launch;
-import kotlinx.coroutines.runBlocking;
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import java.io.File
+import java.net.ServerSocket
 import java.net.Socket
 
-fun main() = runBlocking {
+const val HTTP_VERSION = "HTTP/1.1"
+const val CRLF = "\r\n"
+const val OCTET_STREAM = "application/octet-stream"
+const val ROOT_DIRECTORY = "/tmp/data/codecrafters.io/http-server-tester/"
 
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    println("Logs from your program will appear here!")
-
-    // Uncomment this block to pass the first stage
-    val serverSocket = ServerSocket(4221)
-
-    // Since the tester restarts your program quite often, setting SO_REUSEADDR
-    // ensures that we don't run into 'Address already in use' errors
-    serverSocket.reuseAddress = true
-
-    while(true) {
-        val client = serverSocket.accept() // Wait for connection from client
-        launch(Dispatchers.IO) { handleClient(client) }
-        println("accepted new connection")
-    }
-
+enum class HttpMethod {
+    GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 }
 
-suspend fun handleClient(client: Socket) {
-    val outputStream = client.getOutputStream()
-    val inputStream = client.getInputStream()
+sealed interface HttpStatus {
+    val code: String
+    val reason: String?
+    enum class Success(override val code: String, override val reason: String) : HttpStatus {
+        OK(code = "200", reason = "OK")
+    }
+    enum class Error(override val code: String, override val reason: String) : HttpStatus {
+        NotFound(code = "404", reason = "Not Found")
+    }
+}
 
-    inputStream.bufferedReader().use {
-        val request = it.readLine()
-        val url = request.split(" ")[1]
+data class Request(
+    val method: HttpMethod,
+    val target: String,
+    val httpVersion: String,
+    val headers: Map<String, String> = emptyMap(),
+    val body: String? = null
+)
 
-        when(url) {
-            "/" -> outputStream.write("HTTP/1.1 200 OK\r\n\r\n".toByteArray())
-            "/user-agent" -> {
-                it.readLine()
-                val userAgent = it.readLine().split(":")[1].trim()
-                outputStream.write(response(userAgent.length, userAgent))
+data class Response(
+    val status: HttpStatus,
+    val headers: Map<String, String> = emptyMap(),
+    val body: String? = null
+)
+
+fun String.toHttpMethod(): HttpMethod? {
+    return HttpMethod.entries.firstOrNull { this == it.name }
+}
+
+fun Response.toHttpResponse(): String {
+    return buildString {
+        append("$HTTP_VERSION ${status.code} ${status.reason}$CRLF")
+        headers.forEach {
+                (key, value) -> append("$key: $value$CRLF")
+        }
+
+        if (headers["Content-Type"].equals(OCTET_STREAM)) {
+            append("Content-Length: ${body?.toByteArray()?.size ?: 0}$CRLF")
+        } else {
+            append("Content-Length: ${body?.length ?: 0}$CRLF")
+        }
+        append(CRLF)
+        if (body != null) {
+            append(body)
+        }
+    }
+}
+
+fun makeRequestObj(client: Socket): Request {
+    return client.getInputStream().bufferedReader().let { input ->
+        val (method, target, version) = input.readLine().split(" ")
+        val headers = buildMap {
+            var header: String
+            while ((input.readLine().also { header = it }) != "") {
+                val (key, value) = header.split(": ")
+                put(key, value)
             }
-            else -> {
-                val paths = url.split("/")
-                when(paths[1]) {
-                    "echo" -> outputStream.write(response(paths[2].length, paths[2]))
-                    else -> outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".toByteArray())
+        }
+
+        Request(
+            method.toHttpMethod() ?: throw RuntimeException("Unknown Http Method"),
+            target,
+            version,
+            headers
+        )
+    }
+}
+
+fun makeResponseObj(request: Request): Response {
+    return with(request.target) {
+        when {
+            equals("/") -> Response(status = HttpStatus.Success.OK)
+
+            startsWith("/echo") -> {
+                val echo = substringAfter("/echo/")
+
+                Response(
+                    HttpStatus.Success.OK,
+                    headers = mapOf(
+                        "Content-Type" to "text/plain"
+                    ),
+                    body = echo
+                )
+            }
+
+            equals("/user-agent") -> {
+                Response(
+                    HttpStatus.Success.OK,
+                    headers = mapOf(
+                        "Content-Type" to "text/plain"
+                    ),
+                    body = request.headers["User-Agent"] ?: ""
+                )
+            }
+
+            startsWith("/files/") -> {
+                val fileName = substringAfter("/files/")
+                val pathName = "${ROOT_DIRECTORY}${fileName}"
+                val file = File(pathName)
+                if (file.exists()) {
+                    Response(
+                        HttpStatus.Success.OK,
+                        headers = mapOf(
+                            "Content-Type" to OCTET_STREAM
+                        ),
+                        file.readText()
+                    )
+                } else {
+                    Response(
+                        HttpStatus.Error.NotFound
+                    )
                 }
             }
 
-
+            else -> Response(status = HttpStatus.Error.NotFound)
         }
     }
-
-    outputStream.flush()
-    outputStream.close()
 }
 
-fun response(length: Int, body: String, type: String = "text/plain"): ByteArray {
-    return """
-        HTTP/1.1 200 OK
-        Content-Type: $type
-        Content-Length: $length
-        
-        $body
-    """.trimIndent().replace("\n", "\r\n").toByteArray()
+fun handleClient(client: Socket) {
+    val request = makeRequestObj(client)
+
+    val response = makeResponseObj(request)
+
+    client.outputStream.writer().use {
+        it.write(response.toHttpResponse())
+        it.flush()
+    }
+}
+fun main() = runBlocking {
+
+    val serverSocket = ServerSocket(4221)
+    // Since the tester restarts your program quite often, setting SO_REUSEADDR
+    // ensures that we don't run into 'Address already in use' errors
+    serverSocket.reuseAddress = true
+    while (true) {
+        val client = serverSocket.accept()
+        println("accepted new connection")
+        launch { handleClient(client) }
+    }
 }
