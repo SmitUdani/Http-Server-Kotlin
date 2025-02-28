@@ -7,7 +7,7 @@ import java.net.Socket
 const val HTTP_VERSION = "HTTP/1.1"
 const val CRLF = "\r\n"
 const val OCTET_STREAM = "application/octet-stream"
-const val ROOT_DIRECTORY = "/tmp/data/codecrafters.io/http-server-tester/"
+const val ROOT_DIRECTORY = "/tmp/"
 
 enum class HttpMethod {
     GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
@@ -142,6 +142,7 @@ fun handleClient(client: Socket) {
         it.flush()
     }
 }
+
 fun main() = runBlocking {
 
     val serverSocket = ServerSocket(4221)
