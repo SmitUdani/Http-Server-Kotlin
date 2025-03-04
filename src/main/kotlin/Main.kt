@@ -99,7 +99,10 @@ fun makeResponseObj(request: Request): Response {
             method == HttpMethod.POST -> {
                 val file = File(DIRECTORY, target.substringAfter("/files/"))
                 file.createNewFile()
-                body?.let { file.writeText(it) }
+                body?.let {
+                    file.writeText(it)
+                    println("Write Operation Successful")
+                }
 
                 Response(status = HttpStatus.Success.Created)
             }
@@ -132,7 +135,7 @@ fun makeResponseObj(request: Request): Response {
                 val fileName = target.substringAfter("/files/")
                 val pathName = "${DIRECTORY}${fileName}"
                 val file = File(pathName)
-                if (file.exists()) {
+                if (file.exists() && file.isFile) {
                     Response(
                         HttpStatus.Success.OK,
                         headers = mapOf(
