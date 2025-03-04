@@ -96,8 +96,8 @@ fun makeRequestObj(client: Socket): Request {
 fun makeResponseObj(request: Request): Response {
 
     val headers = mutableMapOf<String, String>()
-    
-    if ("gzip" in (request.headers["Content-Encoding"] ?: ""))
+
+    if ("gzip" in (request.headers["Accept-Encoding"] ?: ""))
         headers["Content-Encoding"] = "gzip"
 
     return with(request) {
