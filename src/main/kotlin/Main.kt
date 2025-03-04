@@ -95,39 +95,39 @@ fun makeRequestObj(client: Socket): Request {
 
 fun makeResponseObj(request: Request): Response {
 
+    val headers = mutableMapOf<String, String>()
+    if (request.headers["Accept-Encoding"] == "gzip")
+        headers["Content-Encoding"] = "gzip"
+
     return with(request) {
         when {
             method == HttpMethod.POST -> {
                 val file = File(DIRECTORY, target.substringAfter("/files/"))
                 file.createNewFile()
-                body?.let {
-                    file.writeText(it)
-                    println("Write Operation Successful")
-                }
+                body?.let { file.writeText(it) }
 
-                Response(status = HttpStatus.Success.Created)
+                Response(status = HttpStatus.Success.Created, headers = headers)
             }
 
-            target == "/" -> Response(status = HttpStatus.Success.OK)
+            target == "/" -> Response(status = HttpStatus.Success.OK, headers = headers)
 
             target.startsWith("/echo") -> {
                 val echo = target.substringAfter("/echo/")
+                headers["content-Type"] = "text/plain"
 
                 Response(
                     HttpStatus.Success.OK,
-                    headers = mapOf(
-                        "Content-Type" to "text/plain"
-                    ),
+                    headers = headers,
                     body = echo
                 )
             }
 
             target == "/user-agent" -> {
+                headers["Content-Type"] = "text/plain"
+                
                 Response(
                     HttpStatus.Success.OK,
-                    headers = mapOf(
-                        "Content-Type" to "text/plain"
-                    ),
+                    headers = headers,
                     body = request.headers["User-Agent"] ?: ""
                 )
             }
@@ -136,12 +136,13 @@ fun makeResponseObj(request: Request): Response {
                 val fileName = target.substringAfter("/files/")
                 val pathName = "${DIRECTORY}${fileName}"
                 val file = File(pathName)
+
                 if (file.exists() && file.isFile) {
+                    headers["Content-Type"] = OCTET_STREAM
+
                     Response(
                         HttpStatus.Success.OK,
-                        headers = mapOf(
-                            "Content-Type" to OCTET_STREAM
-                        ),
+                        headers = headers,
                         file.readText()
                     )
                 } else {
