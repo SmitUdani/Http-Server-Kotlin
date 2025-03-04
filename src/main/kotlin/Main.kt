@@ -96,7 +96,8 @@ fun makeRequestObj(client: Socket): Request {
 fun makeResponseObj(request: Request): Response {
 
     val headers = mutableMapOf<String, String>()
-    if (request.headers["Accept-Encoding"] == "gzip")
+    
+    if ("gzip" in (request.headers["Content-Encoding"] ?: ""))
         headers["Content-Encoding"] = "gzip"
 
     return with(request) {
@@ -124,7 +125,7 @@ fun makeResponseObj(request: Request): Response {
 
             target == "/user-agent" -> {
                 headers["Content-Type"] = "text/plain"
-                
+
                 Response(
                     HttpStatus.Success.OK,
                     headers = headers,
