@@ -8,7 +8,7 @@ import java.net.Socket
 const val HTTP_VERSION = "HTTP/1.1"
 const val CRLF = "\r\n"
 const val OCTET_STREAM = "application/octet-stream"
-var ROOT_DIRECTORY = ""
+var DIRECTORY = ""
 
 enum class HttpMethod {
     GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
@@ -18,7 +18,8 @@ sealed interface HttpStatus {
     val code: String
     val reason: String?
     enum class Success(override val code: String, override val reason: String) : HttpStatus {
-        OK(code = "200", reason = "OK")
+        OK(code = "200", reason = "OK"),
+        Created(code = "201", reason = "Created")
     }
     enum class Error(override val code: String, override val reason: String) : HttpStatus {
         NotFound(code = "404", reason = "Not Found")
@@ -51,7 +52,7 @@ fun Response.toHttpResponse(): String {
         }
 
         if (headers["Content-Type"].equals(OCTET_STREAM)) {
-            append("Content-Length: ${body?.toByteArray()?.size ?: 0}$CRLF")
+            append("Content-Length: ${body?.toByteArray()?.size ?: 0}$C RLF")
         } else {
             append("Content-Length: ${body?.length ?: 0}$CRLF")
         }
@@ -83,12 +84,20 @@ fun makeRequestObj(client: Socket): Request {
 }
 
 fun makeResponseObj(request: Request): Response {
-    return with(request.target) {
-        when {
-            equals("/") -> Response(status = HttpStatus.Success.OK)
 
-            startsWith("/echo") -> {
-                val echo = substringAfter("/echo/")
+    return with(request) {
+        when {
+            method == HttpMethod.POST -> {
+                val file = File(DIRECTORY, target.substringAfter("/files/"))
+                body?.let { file.writeText(it) }
+
+                Response(status = HttpStatus.Success.Created)
+            }
+
+            target == "/" -> Response(status = HttpStatus.Success.OK)
+
+            target.startsWith("/echo") -> {
+                val echo = target.substringAfter("/echo/")
 
                 Response(
                     HttpStatus.Success.OK,
@@ -99,7 +108,7 @@ fun makeResponseObj(request: Request): Response {
                 )
             }
 
-            equals("/user-agent") -> {
+            target == "/user-agent" -> {
                 Response(
                     HttpStatus.Success.OK,
                     headers = mapOf(
@@ -109,9 +118,9 @@ fun makeResponseObj(request: Request): Response {
                 )
             }
 
-            startsWith("/files/") -> {
-                val fileName = substringAfter("/files/")
-                val pathName = "${ROOT_DIRECTORY}${fileName}"
+            target.startsWith("/files/") -> {
+                val fileName = target.substringAfter("/files/")
+                val pathName = "${DIRECTORY}${fileName}"
                 val file = File(pathName)
                 if (file.exists()) {
                     Response(
@@ -153,7 +162,7 @@ fun main(args: Array<String>) = runBlocking {
 
     args.forEachIndexed { index, s ->
         if(s == "--directory" && index + 1 < args.size)
-            ROOT_DIRECTORY = args[index + 1]
+            DIRECTORY = args[index + 1]
     }
 
     while (true) {
