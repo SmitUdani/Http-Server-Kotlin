@@ -76,8 +76,8 @@ fun makeRequestObj(client: Socket): Request {
 
         val contentLength = headers["Content-Length"]?.toIntOrNull() ?: 0
         val body = if (contentLength > 0) {
-            val bodyBytes = ByteArray(contentLength)
-            client.getInputStream().read(bodyBytes, 0, contentLength)
+            val bodyBytes = CharArray(contentLength)
+            input.read(bodyBytes, 0, contentLength)
             String(bodyBytes)  // Convert bytes to string
         } else {
             null
