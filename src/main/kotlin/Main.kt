@@ -74,11 +74,20 @@ fun makeRequestObj(client: Socket): Request {
             }
         }
 
+        val body = buildString {
+            while(true) {
+                val text = input.readLine()
+                if(text.isNullOrBlank()) break
+                append(text)
+            }
+        }
+
         Request(
             method.toHttpMethod() ?: throw RuntimeException("Unknown Http Method"),
             target,
             version,
-            headers
+            headers,
+            body
         )
     }
 }
