@@ -1,9 +1,11 @@
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.zip.GZIPOutputStream
 
 const val HTTP_VERSION = "HTTP/1.1"
 const val CRLF = "\r\n"
@@ -37,30 +39,39 @@ data class Request(
 data class Response(
     val status: HttpStatus,
     val headers: Map<String, String> = emptyMap(),
-    val body: String? = null
+    val body: String = ""
 )
 
 fun String.toHttpMethod(): HttpMethod? {
     return HttpMethod.entries.firstOrNull { this == it.name }
 }
 
-fun Response.toHttpResponse(): String {
-    return buildString {
+fun Response.toHttpResponse(): Pair<ByteArray, ByteArray> {
+
+    val compressed = "Content-Encoding" in headers
+
+    val resBody = if(compressed) gzip(body) else body.toByteArray()
+    val length = resBody.size
+
+    val resHeader = buildString {
         append("$HTTP_VERSION ${status.code} ${status.reason}$CRLF")
         headers.forEach {
                 (key, value) -> append("$key: $value$CRLF")
         }
 
-        if (headers["Content-Type"].equals(OCTET_STREAM)) {
-            append("Content-Length: ${body?.toByteArray()?.size ?: 0}$CRLF")
-        } else {
-            append("Content-Length: ${body?.length ?: 0}$CRLF")
-        }
+        append("Content-Length: ${length}$CRLF")
         append(CRLF)
-        if (body != null) {
-            append(body)
-        }
     }
+
+    return resHeader.toByteArray() to resBody
+}
+
+fun gzip(body: String): ByteArray {
+    val outputStream = ByteArrayOutputStream()
+    GZIPOutputStream(outputStream).use { gzip ->
+        gzip.write(body.toByteArray())
+    }
+    return outputStream.toByteArray()
 }
 
 fun makeRequestObj(client: Socket): Request {
@@ -163,9 +174,11 @@ fun handleClient(client: Socket) {
 
     val response = makeResponseObj(request)
 
-    client.getOutputStream().writer().apply {
-        this.write(response.toHttpResponse())
-        this.flush()
+    client.getOutputStream().use {
+        val (header, body) = response.toHttpResponse()
+        it.write(header)
+        it.write(body)
+        it.flush()
     }
 }
 
