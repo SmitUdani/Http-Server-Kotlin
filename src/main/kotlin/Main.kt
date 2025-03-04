@@ -89,6 +89,7 @@ fun makeResponseObj(request: Request): Response {
         when {
             method == HttpMethod.POST -> {
                 val file = File(DIRECTORY, target.substringAfter("/files/"))
+                file.createNewFile()
                 body?.let { file.writeText(it) }
 
                 Response(status = HttpStatus.Success.Created)
