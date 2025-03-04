@@ -52,7 +52,7 @@ fun Response.toHttpResponse(): String {
         }
 
         if (headers["Content-Type"].equals(OCTET_STREAM)) {
-            append("Content-Length: ${body?.toByteArray()?.size ?: 0}$CRLF")
+            append("Content-Length: ${body?.toByteArray()?.size ?: 0}$C RLF")
         } else {
             append("Content-Length: ${body?.length ?: 0}$CRLF")
         }
