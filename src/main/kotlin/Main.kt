@@ -74,12 +74,13 @@ fun makeRequestObj(client: Socket): Request {
             }
         }
 
-        val body = buildString {
-            while(true) {
-                val text = input.readLine()
-                if(text.isNullOrBlank()) break
-                append(text)
-            }
+        val contentLength = headers["Content-Length"]?.toIntOrNull() ?: 0
+        val body = if (contentLength > 0) {
+            val bodyBytes = ByteArray(contentLength)
+            client.getInputStream().read(bodyBytes, 0, contentLength)
+            String(bodyBytes)  // Convert bytes to string
+        } else {
+            null
         }
 
         Request(
