@@ -112,6 +112,9 @@ fun makeResponseObj(request: Request): Response {
     if ("gzip" in (request.headers["Accept-Encoding"] ?: ""))
         headers["Content-Encoding"] = "gzip"
 
+    if("Connection" in request.headers && request.headers["Connection"] == "close")
+        headers["Connection"] = "close"
+
     return with(request) {
         when {
             method == HttpMethod.POST -> {
@@ -188,6 +191,9 @@ fun handleClient(client: Socket) {
         outputStream.write(header)
         outputStream.write(body)
         outputStream.flush()
+
+        if("Connection" in response.headers && response.headers["Connection"] == "Close")
+            break
     }
 
     outputStream.close()
