@@ -76,7 +76,9 @@ fun gzip(body: String): ByteArray {
 
 fun makeRequestObj(client: Socket): Request {
     return client.getInputStream().bufferedReader().let { input ->
+
         val (method, target, version) = input.readLine().split(" ")
+
         val headers = buildMap {
             var header: String
             while ((input.readLine().also { header = it }) != "") {
@@ -89,10 +91,8 @@ fun makeRequestObj(client: Socket): Request {
         val body = if (contentLength > 0) {
             val bodyBytes = CharArray(contentLength)
             input.read(bodyBytes, 0, contentLength)
-            String(bodyBytes)  // Convert bytes to string
-        } else {
-            null
-        }
+            String(bodyBytes)
+        } else null
 
         Request(
             method.toHttpMethod() ?: throw RuntimeException("Unknown Http Method"),
@@ -150,6 +150,7 @@ fun makeResponseObj(request: Request): Response {
                 val file = File(pathName)
 
                 if (file.exists() && file.isFile) {
+                    println("File Exist")
                     headers["Content-Type"] = OCTET_STREAM
 
                     Response(
@@ -158,6 +159,7 @@ fun makeResponseObj(request: Request): Response {
                         file.readText()
                     )
                 } else {
+                    println("File Does not Exist")
                     Response(
                         HttpStatus.Error.NotFound
                     )
