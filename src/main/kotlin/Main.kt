@@ -197,6 +197,7 @@ fun handleClient(client: Socket) {
     }
 
     outputStream.close()
+    client.close()
 
 }
 
