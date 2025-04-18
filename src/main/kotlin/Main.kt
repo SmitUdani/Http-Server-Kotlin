@@ -170,16 +170,24 @@ fun makeResponseObj(request: Request): Response {
 }
 
 fun handleClient(client: Socket) {
-    val request = makeRequestObj(client)
+    while(true) {
+        val request = makeRequestObj(client)
 
-    val response = makeResponseObj(request)
+        val response = makeResponseObj(request)
 
-    client.getOutputStream().use {
+        val outputStream = client.getOutputStream()
+
         val (header, body) = response.toHttpResponse()
-        it.write(header)
-        it.write(body)
-        it.flush()
+        outputStream.write(header)
+        outputStream.write(body)
+        outputStream.flush()
+
+        if("Connection" in request.headers && request.headers["Connection"] == "close") {
+            outputStream.close()
+            break
+        }
     }
+
 }
 
 fun main(args: Array<String>) = runBlocking {
