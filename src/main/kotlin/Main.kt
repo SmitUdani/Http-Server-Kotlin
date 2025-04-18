@@ -1,6 +1,7 @@
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.ServerSocket
@@ -74,8 +75,8 @@ fun gzip(body: String): ByteArray {
     return outputStream.toByteArray()
 }
 
-fun makeRequestObj(client: Socket): Request {
-    return client.getInputStream().bufferedReader().let { input ->
+fun makeRequestObj(inputReader: BufferedReader): Request {
+    return inputReader.let { input ->
 
         val (method, target, version) = input.readLine().split(" ")
 
@@ -170,24 +171,26 @@ fun makeResponseObj(request: Request): Response {
 }
 
 fun handleClient(client: Socket) {
+    val inputReader = client.getInputStream().bufferedReader()
+    val outputStream = client.getOutputStream()
+
     while(true) {
-        val request = makeRequestObj(client)
+        val request = try {
+            makeRequestObj(inputReader)
+        } catch(e: Exception) {
+            println(e.message)
+            break
+        }
 
         val response = makeResponseObj(request)
-
-        val outputStream = client.getOutputStream()
 
         val (header, body) = response.toHttpResponse()
         outputStream.write(header)
         outputStream.write(body)
         outputStream.flush()
-
-
-        if("Connection" in request.headers && request.headers["Connection"] == "close") {
-            outputStream.close()
-            break
-        }
     }
+
+    outputStream.close()
 
 }
 
