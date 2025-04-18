@@ -150,7 +150,6 @@ fun makeResponseObj(request: Request): Response {
                 val file = File(pathName)
 
                 if (file.exists() && file.isFile) {
-                    println("File Exist")
                     headers["Content-Type"] = OCTET_STREAM
 
                     Response(
@@ -159,7 +158,6 @@ fun makeResponseObj(request: Request): Response {
                         file.readText()
                     )
                 } else {
-                    println("File Does not Exist")
                     Response(
                         HttpStatus.Error.NotFound
                     )
@@ -182,10 +180,10 @@ fun handleClient(client: Socket) {
         val (header, body) = response.toHttpResponse()
         outputStream.write(header)
         outputStream.write(body)
+        outputStream.flush()
 
 
         if("Connection" in request.headers && request.headers["Connection"] == "close") {
-            outputStream.flush()
             outputStream.close()
             break
         }
